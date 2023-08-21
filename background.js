@@ -1,3 +1,33 @@
+async function getActiveTab() {
+    return new Promise((resolve) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+            resolve(tabs[0]);
+        });
+    });
+}
+
+async function updateTabURLAndWaitForLoad(tabId, url) {
+    return new Promise((resolve) => {
+        chrome.tabs.update(tabId, { url }, () => {
+            chrome.tabs.onUpdated.addListener(function listener(updateTabId, info) {
+                if (tabId === updateTabId && info.status === 'complete') {
+                    chrome.tabs.onUpdated.removeListener(listener);
+                    resolve();
+                }
+            });
+        });
+    });
+}
+
+
+async function getClipboardText(tabId) {
+    return new Promise((resolve) => {
+        chrome.tabs.sendMessage(tabId, { action: "getClipboardText" }, function (clipboardText) {
+            resolve(clipboardText);
+        });
+    });
+}
+
 chrome.runtime.onInstalled.addListener(function() {
     chrome.contextMenus.create({
         "id": "gltroot",
@@ -14,7 +44,7 @@ chrome.runtime.onInstalled.addListener(function() {
     chrome.contextMenus.create(toMenu("twitter"));
 });
 
-chrome.contextMenus.onClicked.addListener(function(info, tab) {
+chrome.contextMenus.onClicked.addListener(async function(info, tab) {
     let baseURL;
 
     switch(info.menuItemId) {
@@ -47,10 +77,20 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
         const newURL = baseURL + info.selectionText;
         chrome.tabs.create({ url: newURL });
     } else {
-        chrome.tabs.sendMessage(tab.id, {action: "getClipboardText"}, function(clipboardText) {
+        const currentTab = await getActiveTab();
+
+        if (currentTab.url.startsWith("chrome://")) {
+            const urlObj = new URL(baseURL);
+            await updateTabURLAndWaitForLoad(tab.id, urlObj.origin);
+
+            const clipboardText = await getClipboardText(tab.id);
+            const newURL = baseURL + clipboardText;
+            chrome.tabs.update(tab.id, { url: newURL });
+        } else {
+            const clipboardText = await getClipboardText(tab.id);
             const newURL = baseURL + clipboardText;
             chrome.tabs.create({ url: newURL });
-        });
+        }
     }
 });
 
