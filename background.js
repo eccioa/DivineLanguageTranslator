@@ -2,7 +2,7 @@ chrome.runtime.onInstalled.addListener(function() {
     chrome.contextMenus.create({
         "id": "gltroot",
         "title": "Divine Language",
-        "contexts": ["selection"]
+        "contexts": ["all"]
     });
 
     chrome.contextMenus.create(toMenu("nhentai"));
@@ -15,8 +15,6 @@ chrome.runtime.onInstalled.addListener(function() {
 });
 
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
-    const selectedText = info.selectionText;
-
     let baseURL;
 
     switch(info.menuItemId) {
@@ -45,8 +43,15 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
             return;
     }
 
-    const newURL = baseURL + selectedText;
-    chrome.tabs.create({ url: newURL });
+    if (info.selectionText) {
+        const newURL = baseURL + info.selectionText;
+        chrome.tabs.create({ url: newURL });
+    } else {
+        chrome.tabs.sendMessage(tab.id, {action: "getClipboardText"}, function(clipboardText) {
+            const newURL = baseURL + clipboardText;
+            chrome.tabs.create({ url: newURL });
+        });
+    }
 });
 
 function toMenu(name) {
@@ -54,6 +59,6 @@ function toMenu(name) {
         "id": "glt" + name,
         "parentId": "gltroot",
         "title": name,
-        "contexts": ["selection"]
+        "contexts": ["all"]
     }
 }
