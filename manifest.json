@@ -1,6 +1,6 @@
 {
-  "name": "Divine Language Translator",
-  "description": "Divine Language Translator",
+  "name": "神的語言翻譯器",
+  "description": "翻譯神的語言供學術用途",
   "version": "1.0",
   "manifest_version": 3,
   "background": {
